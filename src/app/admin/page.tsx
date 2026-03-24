@@ -18,9 +18,6 @@ export default function Admin() {
   const [homeTeam, setHomeTeam] = useState('');
   const [awayTeam, setAwayTeam] = useState('');
   const [description, setDescription] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [feeBps, setFeeBps] = useState('200');
   
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -42,20 +39,6 @@ export default function Admin() {
     if (!matchTitle.trim()) return '请输入比赛标题';
     if (!homeTeam.trim()) return '请输入主队名称';
     if (!awayTeam.trim()) return '请输入客队名称';
-    if (!startTime) return '请选择开始时间';
-    if (!endTime) return '请选择结束时间';
-    
-    const startTimestamp = new Date(startTime).getTime() / 1000;
-    const endTimestamp = new Date(endTime).getTime() / 1000;
-    
-    if (endTimestamp <= startTimestamp) {
-      return '结束时间必须晚于开始时间';
-    }
-    
-    const feeNum = parseInt(feeBps);
-    if (isNaN(feeNum) || feeNum < 0 || feeNum > 10000) {
-      return '手续费必须在 0-10000 之间（0-100%）';
-    }
     
     return null;
   };
@@ -74,38 +57,32 @@ export default function Admin() {
     setIsSubmitting(true);
     
     try {
-      const startTimestamp = BigInt(Math.floor(new Date(startTime).getTime() / 1000));
-      const endTimestamp = BigInt(Math.floor(new Date(endTime).getTime() / 1000));
-      const token = '0x0000000000000000000000000000000000000000' as `0x${string}`;
-      const fee = parseInt(feeBps);
+      const matchName = `${homeTeam} vs ${awayTeam}`;
 
       console.log('创建池子参数:', {
-        startTime: startTimestamp.toString(),
-        endTime: endTimestamp.toString(),
-        token,
-        feeBps: fee
+        matchName
       });
 
-      // 调用合约
+      // 调用合约 - 使用简化版 ABI（只传 matchName）
       writeContract({
         address: CONTRACT_CONFIG.address,
         abi: BASE_PLAY_ABI,
         functionName: 'createPool',
-        args: [startTimestamp, endTimestamp, token, fee],
+        args: [matchName],
       }, {
         onSuccess: async (hash) => {
           console.log('✅ 交易已发送:', hash);
           setSuccessMessage('交易已提交，等待确认...');
           
-          // 等待交易确认并获取 poolId
+          // 等待交易确认并保存比赛信息
           setTimeout(async () => {
             try {
-              // 从链上获取最新的池子数量，新池子的 ID 就是 count - 1
+              // 保存比赛信息（使用时间戳作为临时 poolId，实际应该从事件获取）
               const response = await fetch('/api/matches', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  poolId: Date.now(), // 临时使用时间戳，实际应该从事件获取
+                  poolId: Date.now(), // 临时使用时间戳
                   matchTitle,
                   league: league || '未分类',
                   homeTeam,
@@ -122,13 +99,16 @@ export default function Admin() {
                 // 3秒后跳转到列表页
                 setTimeout(() => {
                   router.push('/pools');
+                  router.refresh();
                 }, 3000);
               } else {
                 setErrorMessage('池子创建成功，但比赛信息保存失败。请记录交易哈希: ' + hash);
+                setIsSubmitting(false);
               }
             } catch (err) {
               console.error('保存比赛信息失败:', err);
               setErrorMessage('池子创建成功，但比赛信息保存失败。请手动保存交易哈希: ' + hash);
+              setIsSubmitting(false);
             }
           }, 3000);
         },
@@ -144,25 +124,6 @@ export default function Admin() {
       setErrorMessage(error.message || '提交失败');
       setIsSubmitting(false);
     }
-  };
-
-  // 设置默认时间（当前时间 + 1小时 和 + 2小时）
-  const setDefaultTimes = () => {
-    const now = new Date();
-    const start = new Date(now.getTime() + 60 * 60 * 1000); // +1小时
-    const end = new Date(now.getTime() + 2 * 60 * 60 * 1000); // +2小时
-    
-    setStartTime(formatDateTimeLocal(start));
-    setEndTime(formatDateTimeLocal(end));
-  };
-
-  const formatDateTimeLocal = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   return (
@@ -280,66 +241,6 @@ export default function Admin() {
                   />
                 </div>
 
-                {/* 时间设置 */}
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-blue-400 font-semibold">时间设置</h3>
-                    <button
-                      onClick={setDefaultTimes}
-                      className="text-sm text-blue-400 hover:text-blue-300 transition"
-                    >
-                      使用默认时间
-                    </button>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-gray-300 text-sm mb-2 block">
-                        开始时间 <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-gray-300 text-sm mb-2 block">
-                        结束时间 <span className="text-red-400">*</span>
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-2">
-                    注意：时间为本地时区时间，将自动转换为 UTC 时间戳
-                  </p>
-                </div>
-
-                {/* 手续费 */}
-                <div>
-                  <label className="text-gray-300 font-semibold mb-2 block">
-                    手续费 (bps) <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={feeBps}
-                    onChange={(e) => setFeeBps(e.target.value)}
-                    placeholder="200"
-                    min="0"
-                    max="10000"
-                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    100 bps = 1%, 200 bps = 2%, 最大 10000 bps = 100%
-                  </p>
-                </div>
-
                 {/* 提交按钮 */}
                 <button
                   onClick={handleCreatePool}
@@ -357,9 +258,10 @@ export default function Admin() {
               <ul className="text-gray-300 text-sm space-y-2 list-disc list-inside">
                 <li>创建池子需要支付 Gas 费用</li>
                 <li>池子创建后会立即显示在列表中</li>
-                <li>开始时间之前用户可以下注</li>
-                <li>结束时间到达后需要管理员手动结算</li>
+                <li>用户可以随时下注</li>
+                <li>比赛结束后需要管理员手动结算</li>
                 <li>比赛信息存储在本地 JSON 文件中</li>
+                <li>当前合约版本：简化版（只需比赛名称）</li>
               </ul>
             </div>
           </div>
