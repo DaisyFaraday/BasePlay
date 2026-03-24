@@ -6,6 +6,8 @@ export interface MatchInfo {
   awayTeam: string;
   description?: string;
   logo?: string;
+  startTime: number; // Unix timestamp (秒)
+  endTime: number; // Unix timestamp (秒)
   createdAt: number;
   txHash?: string;
 }

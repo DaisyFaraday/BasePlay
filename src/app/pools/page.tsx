@@ -21,17 +21,23 @@ export default function PoolsPage() {
 
   // 获取比赛信息
   useEffect(() => {
-    fetch('/api/matches')
-      .then(res => res.json())
-      .then(data => setMatchesData(data))
-      .catch(err => console.error('Failed to load matches:', err));
+    const loadMatches = async () => {
+      try {
+        const res = await fetch('/api/matches', { cache: 'no-store' });
+        const data = await res.json();
+        setMatchesData(data);
+      } catch (err) {
+        console.error('Failed to load matches:', err);
+      }
+    };
+    loadMatches();
   }, []);
 
-  // 定期刷新
+  // 定期刷新（每5秒）
   useEffect(() => {
     const interval = setInterval(() => {
       refetch();
-    }, 10000); // 每10秒刷新一次
+    }, 5000);
     return () => clearInterval(interval);
   }, [refetch]);
 
@@ -43,24 +49,25 @@ export default function PoolsPage() {
     return { ...pool, matchInfo };
   });
 
-  // 过滤池子
+  // 过滤池子 - 注意：未开始的池子也要显示！
   const filteredPools = poolsWithMatch.filter((pool: any) => {
     const now = Math.floor(Date.now() / 1000);
-    const startTime = Number(pool.startTime || 0);
-    const endTime = Number(pool.endTime || 0);
+    const matchInfo = pool.matchInfo;
+    const startTime = matchInfo?.startTime || 0;
+    const endTime = matchInfo?.endTime || 0;
     const status = Number(pool.status || 0);
 
     switch (filter) {
       case 'upcoming':
-        return now < startTime; // 未开始
+        return startTime > now; // 未开始
       case 'open':
-        return now >= startTime && now < endTime && status === 0; // 可下注
+        return startTime <= now && endTime > now && status === 0; // 可下注
       case 'closed':
-        return now >= endTime && status < 2; // 已封盘
+        return endTime <= now && status < 2; // 已封盘
       case 'resolved':
         return status === 2; // 已结算
       default:
-        return true; // 全部
+        return true; // 全部 - 包括未开始的！
     }
   });
 
@@ -89,12 +96,21 @@ export default function PoolsPage() {
         <div className="flex gap-2 overflow-x-auto">
           {[
             { key: 'all', label: '全部', count: poolsWithMatch.length },
-            { key: 'upcoming', label: '未开始', count: poolsWithMatch.filter((p: any) => Math.floor(Date.now() / 1000) < Number(p.startTime || 0)).length },
+            { key: 'upcoming', label: '未开始', count: poolsWithMatch.filter((p: any) => {
+              const now = Math.floor(Date.now() / 1000);
+              return (p.matchInfo?.startTime || 0) > now;
+            }).length },
             { key: 'open', label: '可下注', count: poolsWithMatch.filter((p: any) => {
               const now = Math.floor(Date.now() / 1000);
-              return now >= Number(p.startTime || 0) && now < Number(p.endTime || 0) && Number(p.status || 0) === 0;
+              const start = p.matchInfo?.startTime || 0;
+              const end = p.matchInfo?.endTime || 0;
+              return start <= now && end > now && Number(p.status || 0) === 0;
             }).length },
-            { key: 'closed', label: '已封盘', count: poolsWithMatch.filter((p: any) => Math.floor(Date.now() / 1000) >= Number(p.endTime || 0) && Number(p.status || 0) < 2).length },
+            { key: 'closed', label: '已封盘', count: poolsWithMatch.filter((p: any) => {
+              const now = Math.floor(Date.now() / 1000);
+              const end = p.matchInfo?.endTime || 0;
+              return end <= now && Number(p.status || 0) < 2;
+            }).length },
             { key: 'resolved', label: '已结算', count: poolsWithMatch.filter((p: any) => Number(p.status || 0) === 2).length },
           ].map(tab => (
             <button
@@ -147,21 +163,22 @@ export default function PoolsPage() {
 function PoolCard({ pool }: { pool: any }) {
   const totalEth = Number(pool.totalPool || 0) / 1e18;
   const now = Math.floor(Date.now() / 1000);
-  const startTime = Number(pool.startTime || 0);
-  const endTime = Number(pool.endTime || 0);
+  const matchInfo = pool.matchInfo;
+  const startTime = matchInfo?.startTime || 0;
+  const endTime = matchInfo?.endTime || 0;
   const status = Number(pool.status || 0);
   
-  // 确定状态
+  // 确定状态 - 基于比赛信息中的时间
   let statusLabel = '';
   let statusColor = '';
   
-  if (now < startTime) {
+  if (startTime > now) {
     statusLabel = '未开始';
     statusColor = 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-  } else if (now >= startTime && now < endTime && status === 0) {
+  } else if (startTime <= now && endTime > now && status === 0) {
     statusLabel = '可下注';
     statusColor = 'bg-green-500/20 text-green-400 border-green-500/30';
-  } else if (now >= endTime && status < 2) {
+  } else if (endTime <= now && status < 2) {
     statusLabel = '已封盘';
     statusColor = 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
   } else if (status === 2) {
@@ -172,7 +189,6 @@ function PoolCard({ pool }: { pool: any }) {
     statusColor = 'bg-gray-500/20 text-gray-400 border-gray-500/30';
   }
 
-  const matchInfo = pool.matchInfo;
   const displayTitle = matchInfo 
     ? `${matchInfo.homeTeam} vs ${matchInfo.awayTeam}`
     : `Pool #${pool.poolId}`;
@@ -197,10 +213,12 @@ function PoolCard({ pool }: { pool: any }) {
         </div>
 
         {/* Time Info */}
-        <div className="text-xs text-gray-400 mb-4 space-y-1">
-          <div>开始: {new Date(startTime * 1000).toLocaleString('zh-CN')}</div>
-          <div>结束: {new Date(endTime * 1000).toLocaleString('zh-CN')}</div>
-        </div>
+        {startTime > 0 && (
+          <div className="text-xs text-gray-400 mb-4 space-y-1">
+            <div>开始: {new Date(startTime * 1000).toLocaleString('zh-CN')}</div>
+            <div>结束: {new Date(endTime * 1000).toLocaleString('zh-CN')}</div>
+          </div>
+        )}
 
         {/* Prize Pool */}
         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-4">
