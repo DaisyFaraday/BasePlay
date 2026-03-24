@@ -58,17 +58,17 @@ export default function Admin() {
 
   // 验证表单
   const validateForm = (): string | null => {
-    if (!matchTitle.trim()) return '请输入比赛标题';
-    if (!homeTeam.trim()) return '请输入主队名称';
-    if (!awayTeam.trim()) return '请输入客队名称';
-    if (!startTime) return '请选择开始时间';
+    if (!matchTitle.trim()) return '请输入比赛标�?;
+    if (!homeTeam.trim()) return '请输入主队名�?;
+    if (!awayTeam.trim()) return '请输入客队名�?;
+    if (!startTime) return '请选择开始时�?;
     if (!endTime) return '请选择结束时间';
     
     const startTimestamp = new Date(startTime).getTime();
     const endTimestamp = new Date(endTime).getTime();
     
     if (endTimestamp <= startTimestamp) {
-      return '结束时间必须晚于开始时间';
+      return '结束时间必须晚于开始时�?;
     }
     
     const feeNum = parseInt(feeBps);
@@ -105,19 +105,17 @@ export default function Admin() {
         feeBps
       });
 
-      // 调用合约（当前版本只需要 matchName）
-      writeContract({
+      // 调用合约（当前版本只需�?matchName�?      writeContract({
         address: CONTRACT_CONFIG.address,
         abi: BASE_PLAY_ABI,
         functionName: 'createPool',
         args: [matchName],
       }, {
         onSuccess: async (hash) => {
-          console.log('✅ 交易已发送:', hash);
-          setSuccessMessage('池子创建成功！正在保存比赛信息...');
+          console.log('�?交易已发�?', hash);
+          setSuccessMessage('池子创建成功！正在保存比赛信�?..');
           
-          // 等待一下让交易确认，然后保存比赛信息
-          setTimeout(async () => {
+          // 等待一下让交易确认，然后保存比赛信�?          setTimeout(async () => {
             try {
               // 保存比赛信息
               const response = await fetch('/api/matches', {
@@ -126,7 +124,7 @@ export default function Admin() {
                 body: JSON.stringify({
                   poolId: Date.now(), // 临时 ID，实际应该从链上事件获取
                   matchTitle,
-                  league: league || '未分类',
+                  league: league || '未分�?,
                   homeTeam,
                   awayTeam,
                   description,
@@ -137,7 +135,7 @@ export default function Admin() {
               });
 
               if (response.ok) {
-                setSuccessMessage(`池子创建成功！交易: ${hash.slice(0, 10)}... 正在跳转...`);
+                setSuccessMessage(`池子创建成功！交�? ${hash.slice(0, 10)}... 正在跳转...`);
                 
                 // 2秒后跳转
                 setTimeout(() => {
@@ -150,13 +148,13 @@ export default function Admin() {
               }
             } catch (err) {
               console.error('保存比赛信息失败:', err);
-              setErrorMessage('池子创建成功，但比赛信息保存失败。交易: ' + hash);
+              setErrorMessage('池子创建成功，但比赛信息保存失败。交�? ' + hash);
               setIsSubmitting(false);
             }
           }, 2000);
         },
         onError: (error: any) => {
-          console.error('❌ 交易失败:', error);
+          console.error('�?交易失败:', error);
           
           // 提取详细错误信息
           let reason = '未知错误';
@@ -168,8 +166,7 @@ export default function Admin() {
             reason = error.message;
           }
           
-          // 在页面显示详细错误
-          setErrorMessage(`创建失败: ${reason}`);
+          // 在页面显示详细错�?          setErrorMessage(`创建失败: ${reason}`);
           setIsSubmitting(false);
         }
       });
@@ -185,12 +182,11 @@ export default function Admin() {
       <header className="border-b border-gray-800 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-white hover:text-blue-400 transition">
-            ← BasePlay
+            �?BasePlay
           </Link>
           <div className="flex gap-4 items-center">
             <Link href="/pools" className="text-gray-300 hover:text-white transition">
-              查看所有池子
-            </Link>
+              查看所有池�?            </Link>
             <ConnectButton />
           </div>
         </div>
@@ -198,7 +194,7 @@ export default function Admin() {
 
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <h1 className="text-4xl font-extrabold text-white mb-2">⚙️ 管理后台</h1>
-        <p className="text-gray-400 mb-8">创建新的预测池</p>
+        <p className="text-gray-400 mb-8">创建新的预测�?/p>
 
         {!address ? (
           <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-12 text-center backdrop-blur-sm">
@@ -206,6 +202,16 @@ export default function Admin() {
             <ConnectButton />
           </div>
         ) : !isAdmin ? (
+          <>
+            {/* Debug Info */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6 mb-6">
+              <p className="text-blue-400 font-semibold mb-4">?? ������Ϣ</p>
+              <div className="space-y-2 font-mono text-sm">
+                <p className="text-gray-300">���Ǯ��: <span className="text-white">{address}</span></p>
+                <p className="text-gray-300">��Լ Owner: <span className="text-white">{contractOwner as string || "������..."}</span></p>
+                <p className="text-gray-300">ƥ����: <span className={isAdmin ? "text-green-400" : "text-red-400"}>{isAdmin ? "? ƥ��" : "? ��ƥ��"}</span></p>
+              </div>
+            </div>
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-12 text-center backdrop-blur-sm">
             <p className="text-red-400 text-lg">⚠️ 权限不足</p>
             <p className="text-gray-400 mt-2">只有合约管理员可以访问此页面</p>
@@ -215,18 +221,18 @@ export default function Admin() {
             {/* 消息提示 */}
             {errorMessage && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                <p className="text-red-400 font-semibold">❌ {errorMessage}</p>
+                <p className="text-red-400 font-semibold">�?{errorMessage}</p>
               </div>
             )}
             {successMessage && (
               <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                <p className="text-green-400 font-semibold">✅ {successMessage}</p>
+                <p className="text-green-400 font-semibold">�?{successMessage}</p>
               </div>
             )}
 
             {/* 创建池子表单 */}
             <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6 backdrop-blur-sm">
-              <h2 className="text-2xl font-bold text-white mb-6">创建比赛池</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">创建比赛�?/h2>
               
               <div className="space-y-4">
                 {/* 比赛标题 */}
@@ -238,7 +244,7 @@ export default function Admin() {
                     type="text"
                     value={matchTitle}
                     onChange={(e) => setMatchTitle(e.target.value)}
-                    placeholder="例如：英超第 15 轮"
+                    placeholder="例如：英超第 15 �?
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -250,7 +256,7 @@ export default function Admin() {
                     type="text"
                     value={league}
                     onChange={(e) => setLeague(e.target.value)}
-                    placeholder="例如：英超"
+                    placeholder="例如：英�?
                     className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>
@@ -265,7 +271,7 @@ export default function Admin() {
                       type="text"
                       value={homeTeam}
                       onChange={(e) => setHomeTeam(e.target.value)}
-                      placeholder="例如：曼联"
+                      placeholder="例如：曼�?
                       className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
                     />
                   </div>
@@ -310,7 +316,7 @@ export default function Admin() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-gray-300 text-sm mb-2 block">
-                        开始时间 <span className="text-red-400">*</span>
+                        开始时�?<span className="text-red-400">*</span>
                       </label>
                       <input
                         type="datetime-local"
@@ -332,8 +338,7 @@ export default function Admin() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 mt-2">
-                    时间为本地时区，将自动转换为 UTC 时间戳
-                  </p>
+                    时间为本地时区，将自动转换为 UTC 时间�?                  </p>
                 </div>
 
                 {/* Token 和手续费 */}
@@ -346,11 +351,11 @@ export default function Admin() {
                       disabled
                       className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-gray-400"
                     />
-                    <p className="text-xs text-gray-500 mt-1">当前仅支持 ETH</p>
+                    <p className="text-xs text-gray-500 mt-1">当前仅支�?ETH</p>
                   </div>
                   <div>
                     <label className="text-gray-300 font-semibold mb-2 block">
-                      手续费 (bps) <span className="text-red-400">*</span>
+                      手续�?(bps) <span className="text-red-400">*</span>
                     </label>
                     <input
                       type="number"
@@ -370,7 +375,7 @@ export default function Admin() {
                   disabled={isSubmitting}
                   className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-lg transition text-lg mt-6"
                 >
-                  {isSubmitting ? '⏳ 创建中...' : '🚀 创建池子'}
+                  {isSubmitting ? '�?创建�?..' : '🚀 创建池子'}
                 </button>
               </div>
             </div>
@@ -379,11 +384,11 @@ export default function Admin() {
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6">
               <p className="text-yellow-400 font-semibold mb-2">📝 说明</p>
               <ul className="text-gray-300 text-sm space-y-2 list-disc list-inside">
-                <li>创建池子需要支付 Gas 费用</li>
+                <li>创建池子需要支�?Gas 费用</li>
                 <li>池子创建后会立即显示在列表中</li>
-                <li>比赛信息存储在服务器 JSON 文件中</li>
+                <li>比赛信息存储在服务器 JSON 文件�?/li>
                 <li>当前合约版本为简化版，仅需比赛名称</li>
-                <li>时间、手续费等信息将保存在数据库中</li>
+                <li>时间、手续费等信息将保存在数据库�?/li>
               </ul>
             </div>
           </div>
