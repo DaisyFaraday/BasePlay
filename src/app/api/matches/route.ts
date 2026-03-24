@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       awayTeam: body.awayTeam,
       description: body.description || '',
       logo: body.logo || '',
+      startTime: body.startTime || Math.floor(Date.now() / 1000), // 默认当前时间
+      endTime: body.endTime || Math.floor(Date.now() / 1000) + 3600, // 默认1小时后
       createdAt: Date.now(),
       txHash: body.txHash || '',
     };
